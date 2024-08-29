@@ -46,7 +46,11 @@ INSTALLED_APPS = [
     'Loan',
     'Insurance',
     'Branch',
-    'investment'
+    'investment',
+    'Notification',
+    'BillPayment',
+    'Offer',
+    'CustomerSupport'
 ]
 
 MIDDLEWARE = [
