@@ -108,14 +108,3 @@ def close_support_request(request):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     return Response({"detail": "Support request not found"}, status=status.HTTP_404_NOT_FOUND)
 
-# _____________ Search Support Requests _____________
-
-@api_view(["GET"])
-def search_support_requests(request):
-    query = request.query_params.get('query')
-    if not query:
-        return Response({"detail": "Query parameter is required"}, status=status.HTTP_400_BAD_REQUEST)
-
-    support_requests = CustomerSupport.objects.filter(description__icontains=query)
-    serializer = CustomerSupportSerializer(support_requests, many=True)
-    return Response(serializer.data, status=status.HTTP_200_OK)

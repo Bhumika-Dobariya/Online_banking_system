@@ -49,14 +49,11 @@ def user_login(request):
         if not user.is_active:
             return Response({"message": "User account is inactive"}, status=status.HTTP_403_FORBIDDEN)
         
-        # Deactivate any existing OTPs
         OTP.objects.filter(user_email=user.email, is_active=True).update(is_active=False, is_deleted=True)
 
-        # Generate a new OTP
         otp_code = str(random.randint(100000, 999999))
         expiration_time = timezone.now() + timedelta(minutes=10)
 
-        # Create the new OTP entry
         OTP.objects.create(
             id=uuid.uuid4(),
             user_email=user.email,
@@ -116,7 +113,6 @@ def verify_otp_and_login(request):
     
     
 #___________________user register___________________
-
 
 
 @api_view(["POST"])

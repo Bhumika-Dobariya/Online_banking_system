@@ -83,16 +83,3 @@ def get_customers_by_gender(request):
         return Response(serializer.data, status=status.HTTP_200_OK)
     return Response({"detail": "No customers found for the specified gender or they are inactive/deleted"}, status=status.HTTP_404_NOT_FOUND)
 
-# _____________ Get Customers by Name _____________
-
-@api_view(["GET"])
-def get_customers_by_name(request):
-    name = request.query_params.get('name')
-    if not name:
-        return Response({"detail": "Name parameter is required"}, status=status.HTTP_400_BAD_REQUEST)
-
-    customers = Customer.objects.filter(name__icontains=name, is_deleted=False, is_active=True)
-    if customers.exists():
-        serializer = CustomerSerializer(customers, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
-    return Response({"detail": "No customers found with the specified name or they are inactive/deleted"}, status=status.HTTP_404_NOT_FOUND)

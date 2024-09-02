@@ -16,12 +16,12 @@ class Account(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     customer = models.ForeignKey('Customer.Customer', on_delete=models.CASCADE, related_name='accounts', null=True, blank=True)
-    account_number = models.CharField(max_length=20, unique=True)
+    account_number = models.CharField(max_length=18, unique=True)
     account_type = models.CharField(max_length=10, choices=ACCOUNT_TYPES)
     business_or_personal = models.CharField(max_length=10, choices=ACCOUNT_CATEGORIES)
     balance = models.DecimalField(max_digits=15, decimal_places=2, default=0.00)
     is_active = models.BooleanField(default=True)
-    deleted_at = models.DateTimeField(null=True, blank=True)
+    is_deleted = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

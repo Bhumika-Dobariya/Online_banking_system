@@ -6,16 +6,38 @@ from .models import Card
 from .serializers import CardSerializer
 from datetime import datetime, timedelta
 from Transaction.serializers import TransactionSerializer
+from decimal import Decimal
+
 
 # _____________ Create Card ___________________
+
 
 @api_view(["POST"])
 def create_card(request):
     serializer = CardSerializer(data=request.data)
+    
     if serializer.is_valid():
-        serializer.save()
+        card = serializer.save()
+        card_type = card.card_type  
+
+        if card_type == 'Credit':
+            if not card.credit_limit:
+                card.credit_limit = 5000.00
+            if not card.transaction_limit:
+                card.transaction_limit = 1000.00
+            card.save()
+
+        elif card_type == 'Debit':
+            if not card.associated_account:
+                return Response({"detail": "Associated account is required"}, status=status.HTTP_400_BAD_REQUEST)
+            if not card.transaction_limit:
+                card.transaction_limit = 500.00
+            card.save()
+
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+    
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 # _____________ Get Card by ID ___________________
 
@@ -113,15 +135,28 @@ def filter_cards_by_balance(request):
 
 @api_view(["POST"])
 def transfer_funds_between_cards(request):
-    from_card_id = request.data.get('from_card_id')
-    to_card_id = request.data.get('to_card_id')
-    amount = request.data.get('amount')
 
-    if not from_card_id or not to_card_id or not amount:
-        return Response({"detail": "From card ID, to card ID, and amount are required"}, status=status.HTTP_400_BAD_REQUEST)
+    from_card_number = request.query_params.get('from_card_number')
+    to_card_number = request.query_params.get('to_card_number')
+    amount = request.query_params.get('amount')
 
-    from_card = get_object_or_404(Card, pk=from_card_id)
-    to_card = get_object_or_404(Card, pk=to_card_id)
+    if not from_card_number or not to_card_number or amount is None:
+        return Response({"detail": "From card number, to card number, and amount are required"}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        amount = Decimal(amount)  
+        if amount <= 0:
+            return Response({"detail": "Amount must be greater than zero"}, status=status.HTTP_400_BAD_REQUEST)
+    except ValueError:
+        return Response({"detail": "Invalid amount format"}, status=status.HTTP_400_BAD_REQUEST)
+
+    from_card = Card.objects.filter(card_number=from_card_number).first()
+    to_card = Card.objects.filter(card_number=to_card_number).first()
+
+    if from_card is None:
+        return Response({"detail": "From card not found"}, status=status.HTTP_404_NOT_FOUND)
+    if to_card is None:
+        return Response({"detail": "To card not found"}, status=status.HTTP_404_NOT_FOUND)
 
     if from_card.available_balance < amount:
         return Response({"detail": "Insufficient funds"}, status=status.HTTP_400_BAD_REQUEST)
@@ -140,10 +175,16 @@ def deactivate_card(request):
     card_id = request.query_params.get('id')
     if not card_id:
         return Response({"detail": "ID query parameter is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+    card_exists = Card.objects.filter(pk=card_id).exists()
+    if not card_exists:
+        return Response({"detail": "Card not found"}, status=status.HTTP_404_NOT_FOUND)
     
-    card = get_object_or_404(Card, pk=card_id)
+    card = Card.objects.get(pk=card_id)
+
     card.status = 'inactive'
     card.save()
+    
     return Response({"detail": "Card deactivated successfully"}, status=status.HTTP_200_OK)
 
 
@@ -158,9 +199,11 @@ def reactivate_card(request):
     card.save()
     return Response({"detail": "Card reactivated successfully"}, status=status.HTTP_200_OK)
 
+
+
 @api_view(["GET"])
 def get_expiring_cards(request):
-    days_until_expiry = request.query_params.get('days_until_expiry', 30)  # Default to 30 days
+    days_until_expiry = request.query_params.get('days_until_expiry', 30)  
     try:
         days_until_expiry = int(days_until_expiry)
     except ValueError:
@@ -172,17 +215,26 @@ def get_expiring_cards(request):
     return Response(serializer.data, status=status.HTTP_200_OK)
 
 
+
 @api_view(["PATCH"])
 def update_card_pin(request):
     card_id = request.query_params.get('id')
     new_pin = request.data.get('pin')
+    
     if not card_id or not new_pin:
         return Response({"detail": "ID and new PIN are required"}, status=status.HTTP_400_BAD_REQUEST)
+
+    card_exists = Card.objects.filter(pk=card_id).exists()
+    if not card_exists:
+        return Response({"detail": "Card not found"}, status=status.HTTP_404_NOT_FOUND)
     
-    card = get_object_or_404(Card, pk=card_id)
+    card = Card.objects.get(pk=card_id)
+
     card.pin = new_pin
     card.save()
+    
     return Response({"detail": "Card PIN updated successfully"}, status=status.HTTP_200_OK)
+
 
 
 @api_view(["GET"])
@@ -208,7 +260,6 @@ def get_card_with_transactions(request):
     
     card_serializer = CardSerializer(card)
     
-    # Fetch related transactions
     transactions = card.transactions.all()
     transaction_serializer = TransactionSerializer(transactions, many=True)
     

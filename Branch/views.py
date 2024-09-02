@@ -62,6 +62,8 @@ def delete_branch(request):
     branch.delete()
     return Response({"detail": "Branch deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
 
+
+
 # _____________ Filter Branches by Name ___________________
 
 @api_view(["GET"])
@@ -88,6 +90,7 @@ def get_branches_by_manager(request):
     return Response(serializer.data, status=status.HTTP_200_OK)
 
 
+#_______________ get branches by phone number________________
 @api_view(["GET"])
 def get_branches_by_phone_number(request):
     phone_number = request.query_params.get('phone_number')
